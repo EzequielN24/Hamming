@@ -1,7 +1,3 @@
-
-
-
-
 def colocar_bit_control(p):
     primer=(int((ord(p))))
     primer >>=4
@@ -46,14 +42,7 @@ print((int((ord("y")))) >> 4)
 
 print(bin((int((ord("y")))) >> 4))
 
-
-
-
 print(bin((int((ord("y")))) % 16))
-
-
-
-
 
 print(bin(ord("y")))
 print(bin((int((ord("y")))) % 16))
