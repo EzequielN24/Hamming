@@ -96,9 +96,11 @@ def codificar_archivo(file_name_read, file_name_write):
     try:
         with open(file_name_read, "rb") as f:
             contenido = f.read().decode('utf-8')
-            with open(file_name_write, 'w') as wr:
+            with open(file_name_write, 'w',encoding='utf-8') as wr:
                 for i in range(0,len(contenido)):
+                    print(contenido[i])
                     hamming = hamminizacion(contenido[i])
+                    print(f"{hamming['primer']}{hamming['segundo']}")
                     wr.write(f"{hamming['primer']}{hamming['segundo']}")
     except FileNotFoundError as e:
         print("Ocurrió un error al abrir los archivos: ", e)
@@ -131,7 +133,7 @@ def ingresar_error(file_name_read,file_name_write):
                     mask = 1 << error
                     caracter= mask ^ ord(caracter)
                     contenido = contenido[:x] +  chr(caracter) + contenido[x+1:]
-            with open(file_name_write, 'w') as wr:
+            with open(file_name_write, 'w',encoding='utf-8') as wr:
                 wr.write(f"{(contenido)}")
     except Exception as e:
         print(f"Error al ingresar error: {e}")

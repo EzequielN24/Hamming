@@ -1,7 +1,91 @@
 import random
+import math
+
+def codificar_archivo(file_name_read, file_name_write):
+    try:
+        with open(file_name_read, "rb") as f, open(file_name_write, "w",encoding="utf-8") as wr:
+            while True:
+                bloque = f.read(31)
+                if len(bloque) == 0:
+                    break
+                valor = int.from_bytes(bloque, byteorder='big')
+                valor <<= (8 * (31 - len(bloque)))
+                num = crear_numero_256(valor)
+                for i in range(1,32):
+                    letra=(num >> (256 - (8 * i))) & 255
+                    print(chr(letra))
+                    print(ord(chr(letra)))
+                    wr.write(f"{chr(letra)}")
+    except FileNotFoundError as e:
+        print("Ocurrió un error al abrir los archivos: ", e)
+    except Exception as e:
+        print("Error: ", e)
+
+
+
+def crear_numero_256(p):
+    j = 1
+    res = 0
+    for i in range(1, 257):
+        if (i==1 or i==2 or i==4 or i==8 or i==16 or i==32 or i==64 or i==128 or i==256):
+            continue
+        else:
+            bit = (p >> (248 - j)) & 1
+            res |= (bit << (256 - i))
+            j += 1
+    p = codificacion_hamming_256(res)
+    print(bin(p))
+    return p
+
+
+def calcular_bit_control(p, pos):
+    control = 0
+    for i in range(pos, 257, pos * 2):
+        for j in range(i, min(i + pos, 257)):
+            control ^= (p >> (256 - j)) & 1
+    return control
+
+
+def codificacion_hamming_256(p):
+    for bit_pos in [1, 2, 4, 8, 16, 32, 64, 128]:
+        control = calcular_bit_control(p, bit_pos)
+        p |= (control << (256 - bit_pos))
+    return p
+
+    
+    """
+    control1=0
+    for i in range(1,256,2):
+        control1=control1 ^ (p>>(256-i) & 1)
+    print(control1<<255)
+    p = p | (control1 << 255)
+    control2=0
+    for i in range(2,256,4):
+        control2=control2 ^ (p>>(256-i) & 1) ^ (p>>(255-i) & 1)
+    p = p | (control2 << 254)
+    control3=0
+    for i in range(4,256,8):
+        control3=control3 ^ (p>>(256-i) & 1) ^ (p>>(255-i) & 1) ^ (p>>(254-i) & 1) ^ (p>>(253-i) & 1)
+    p = p | (control3 << 252)
+    control4=0
+    for i in range(8,256,16):
+        control4=control4 ^ (p>>(256-i) & 1) ^ (p>>(255-i) & 1) ^ (p>>(254-i) & 1) ^ (p>>(253-i) & 1) ^ (p>>(252-i) & 1) ^ (p>>(251-i) & 1) ^ (p>>(250-i) & 1) ^ (p>>(249-i) & 1)
+    p = p | (control4 << 248)
+    control5=0
+    for i in range(16,256,32):
+        control5=control5 ^ (p>>(256-i) & 1) ^ (p>>(255-i) & 1) ^ (p>>(254-i) & 1) ^ (p>>(253-i) & 1) ^ (p>>(252-i) & 1) ^ (p>>(251-i) & 1) ^ (p>>(250-i) & 1) ^ (p>>(249-i) & 1) ^ (p>>(248-i) & 1) ^ (p>>(247-i) & 1) ^ (p>>(246-i) & 1) ^ (p>>(245-i) & 1) ^ (p>>(244-i) & 1) ^ (p>>(243-i) & 1) ^ (p>>(242-i) & 1) ^ (p>>(241-i) & 1)
+    p = p | (control5 << 240)
+    print(bin(p))
+    return p;
+    """
+
+
+
+
+
 
 def hamminizacion_256(p):
-    codificacion = codificacion_hamming(ord(p))
+    codificacion = codificacion_hamming_256(p)
     return codificacion
 
 
@@ -38,6 +122,9 @@ def codificacion_hamming(p):
     num=0
     num = (control1 << 7) + (control2 << 6) + ((p & 8) << 2) + (control3 << 4) + ((p & 4) << 1) + ((p & 2) << 1) + ((p & 1) << 1) + paridad
     return num
+
+
+
 
 
 def deshamminizacion(p,q,fix_module):
@@ -114,24 +201,6 @@ def decodificacion_hamming(p):
 def corregir_error(p, error):
     return (p ^ (256 >> error))
 
-
-
-def codificar_archivo(file_name_read, file_name_write):
-    try:
-        with open(file_name_read, "rb") as f:
-            while True:
-                contenido = f.read(31)
-                if (len(contenido) == 0):
-                    break
-                if len(contenido) < 31:
-                    contenido = contenido << ((31 - len(contenido)) * 8) #Si lee menos de 31 caracteres realiza corrimientos para hacer el hamming de lo que queda
-                with open(file_name_write, 'w') as wr:
-                    hamming = hamminizacion_256(contenido)
-                    wr.write(f"{hamming}")
-    except FileNotFoundError as e:
-        print("Ocurrió un error al abrir los archivos: ", e)
-    except Exception as e:
-        print("Error: ", e)
 
 def decodificar_archivo(file_name_read, file_name_write, arreglar_archivo):
     try:
