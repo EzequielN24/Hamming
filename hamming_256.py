@@ -1,15 +1,59 @@
 import random
 import math
 
+def crear_numero_256(p):
+    # p contiene 240 bits de datos
+    j = 0
+    res = 0
+    for i in range(1, 257):
+        if (i & (i - 1)) == 0:  # Potencia de 2: posición de bit de control
+            continue
+        elif j < 240:
+            bit = (p >> (239 - j)) & 1  # Solo tomamos 240 bits
+            res |= (bit << (256 - i))
+            j += 1
+        else:
+            # Rellenamos con ceros del 241 al 247 (se agregan automáticamente al mantener res en 0)
+            continue
+    return codificacion_hamming_256(res)
+
+
+def codificacion_hamming_256(p):
+    for bit_pos in [1, 2, 4, 8, 16, 32, 64, 128]:
+        control = calcular_bit_control(p, bit_pos)
+        p |= (control << (256 - bit_pos))
+    p=calcular_bit_paridad(p)
+    return p
+
+
+
+def calcular_bit_control(p:int, pos:int) -> int:
+    control = 0
+    for i in range(pos, 256, pos * 2):
+        for j in range(i, i + pos):
+            control ^= (p >> (256 - j)) & 1
+    return control
+
+
+
+def calcular_bit_paridad(p):
+    paridad=0
+    for i in range (1,256):
+        paridad ^= (p >> (256 - i)) & 1
+    p^= paridad
+    return p
+
+
+
 def codificar_archivo_256(file_name_read, file_name_write):
     try:
         with open(file_name_read, "rb") as f, open(file_name_write, "w",encoding="utf-8") as wr:
             while True:
-                bloque = f.read(31)
+                bloque = f.read(30)
                 if len(bloque) == 0:
                     break
                 valor = int.from_bytes(bloque, byteorder='big')
-                valor <<= (8 * (31 - len(bloque)))
+                valor <<= (8 * (30 - len(bloque)))
                 num = crear_numero_256(valor)
                 for i in range(1,33):
                     letra=(num >> (256 - (8 * i))) & 255
@@ -20,42 +64,10 @@ def codificar_archivo_256(file_name_read, file_name_write):
         print("Error: ", e)
 
 
-def decodificar_archivo_256(file_name_read, file_name_write, arreglar_archivo):
-    try:
-        with open(file_name_read, "r", encoding="utf-8") as f, open(file_name_write, "w",encoding="utf-8") as wr:
-            while True:
-                print("entra while")
-                bloque = f.read(32)
-                print(bloque)
-                print(len(bloque))
-                if len(bloque) == 0:
-                    print("entra break")
-                    break
-                valor=0
-                for i,caracter in enumerate(bloque):
-                    valor += ord(caracter) << (248-(8*i))
-                num = deshamminizacion_256(valor,arreglar_archivo)
-
-                for i in range(1,32):
-                    letra=(num >> (248 - (8 * i))) & 255
-                    if(chr(letra).isprintable()):
-                        wr.write(f"{chr(letra)}")
-    except FileNotFoundError as e:
-        print("Ocurrió un error al abrir los archivos: ", e)
-    except Exception as e:
-        print("Error: ", e)
 
 
-def control_hamming_256(p):
-    res={}
-    for i,bit_pos in enumerate([1, 2, 4, 8, 16, 32, 128]):
-        control = calcular_bit_control_deshamminizacion(p, bit_pos)
-        res[f"s{i}"]=control
-    paridad=0
-    for i in range (1,257):
-        paridad ^= (p >> (256 - i)) & 1
-    res[f"paridad"]=paridad
-    return res
+'''--------------------------------------------------------------------------------------------------'''
+
 
 
 def deshamminizacion_256(p,fix_module):
@@ -85,9 +97,22 @@ def deshamminizacion_256(p,fix_module):
 
 def corregir_error_256(p,error):
     return (p ^ (2**256 >> error)) 
- 
 
- 
+
+
+def control_hamming_256(p):
+    res={}
+    for i,bit_pos in enumerate([1, 2, 4, 8, 16, 32, 128]):
+        control = calcular_bit_control_deshamminizacion(p, bit_pos)
+        res[f"s{i}"]=control
+    paridad=0
+    for i in range (1,257):
+        paridad ^= (p >> (256 - i)) & 1
+    res[f"paridad"]=paridad
+    return res
+
+
+
 def calcular_bit_control_deshamminizacion(p:int, pos:int) -> int:
     control = 0
     for i in range(pos, 256, pos * 2):
@@ -97,60 +122,43 @@ def calcular_bit_control_deshamminizacion(p:int, pos:int) -> int:
 
 
 def decodificacion_hamming_256(p):
-    j = 1
-    res = 0
-    for i in range(1, 257):
-        if (i==1 or i==2 or i==4 or i==8 or i==16 or i==32 or i==64 or i==128 or i==256):
-            continue
-        else:
-            bit = (p >> (256 - i)) & 1
-            res += (bit << (248-j))
+    j=1
+    res=0
+    for i in range(1,254): #que llegue a 254 sin contarlo debido a los dos bits de control c1 y c2
+        if ( i in [128 , 192, 224, 240, 248, 252] ): #Cuando el índice es un bit de control, es decir que el segundo bit de control es 128 + 64, incrementa el j para que corra 1 lugar más de posiciones.
             j += 1
+        else:
+            res += ((p & (2 ** i)) >> j) #empieza de atras para adelante, por eso es así
     return res
 
 
-def crear_numero_256(p):
-    j = 1
-    res = 0
-    for i in range(1, 257):
-        if (i==1 or i==2 or i==4 or i==8 or i==16 or i==32 or i==64 or i==128 or i==256):
-            continue
-        else:
-            bit = (p >> (248 - j)) & 1
-            res |= (bit << (256 - i))
-            j += 1
-    p = codificacion_hamming_256(res)
-    return p
+def decodificar_archivo_256(file_name_read, file_name_write, arreglar_archivo):
+    try:
+        with open(file_name_read, "r", encoding="utf-8") as f, open(file_name_write, "w",encoding="utf-8") as wr:
+            while True:
+                bloque = f.read(32)
+                if len(bloque) == 0:
+                    break
+                valor=0
+                for i,caracter in enumerate(bloque):
+                    valor += ord(caracter) << (248-(8*i))
+                num = deshamminizacion_256(valor,arreglar_archivo)
+                num >>= 7 #Tenemos que sacar los 0's agregados
+                for i in range(31):
+                    shift = 248 - (8 * (i+1))
+                    letra = (num >> shift) & 0xFF
+                    print(f'La letra es: {bin(letra)}')
+                    if(letra != 0):
+                        wr.write(f"{chr(letra)}")
+    except FileNotFoundError as e:
+        print("Ocurrió un error al abrir los archivos: ", e)
+    except Exception as e:
+        print("Error: ", e)
 
 
-def calcular_bit_control(p:int, pos:int) -> int:
-    control = 0
-    for i in range(pos, 256, pos * 2):
-        for j in range(i, i + pos):
-            control ^= (p >> (256 - j)) & 1
-    return control
 
 
-def calcular_bit_paridad(p):
-    paridad=0
-    for i in range (1,256):
-        paridad ^= (p >> (256 - i)) & 1
-    p^= paridad
-    return p
-
-
-def codificacion_hamming_256(p):
-    for bit_pos in [1, 2, 4, 8, 16, 32, 64, 128]:
-        control = calcular_bit_control(p, bit_pos)
-        p |= (control << (256 - bit_pos))
-    p=calcular_bit_paridad(p)
-    return p
-
-
-def hamminizacion_256(p):
-    codificacion = codificacion_hamming_256(p)
-    return codificacion
-
+'''----------------------------------------------------------------------------------------------------------------'''
 
 def ingresar_error_256(file_name_read,file_name_write):
     try:
