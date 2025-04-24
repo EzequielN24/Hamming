@@ -55,6 +55,7 @@ def codificar_archivo_256(file_name_read, file_name_write):
                 valor = int.from_bytes(bloque, byteorder='big')
                 valor <<= (8 * (30 - len(bloque)))
                 num = crear_numero_256(valor)
+                print(f'La palabra codificada es {bin(num)}')
                 for i in range(1,33):
                     letra=(num >> (256 - (8 * i))) & 255
                     wr.write(f"{chr(letra)}")
@@ -122,13 +123,17 @@ def calcular_bit_control_deshamminizacion(p:int, pos:int) -> int:
 
 
 def decodificacion_hamming_256(p):
-    j=1
-    res=0
-    for i in range(1,254): #que llegue a 254 sin contarlo debido a los dos bits de control c1 y c2
-        if ( i in [128 , 192, 224, 240, 248, 252] ): #Cuando el índice es un bit de control, es decir que el segundo bit de control es 128 + 64, incrementa el j para que corra 1 lugar más de posiciones.
-            j += 1
-        else:
-            res += ((p & (2 ** i)) >> j) #empieza de atras para adelante, por eso es así
+    j = 0
+    res = 0
+    print(bin(p))
+    for i in range(1, 257):
+        if (i & (i - 1)) == 0:
+            continue
+        if j >= 240:
+            break
+        bit = (p >> (256 - i)) & 1
+        res |= (bit << (239 - j))
+        j += 1
     return res
 
 
@@ -143,11 +148,10 @@ def decodificar_archivo_256(file_name_read, file_name_write, arreglar_archivo):
                 for i,caracter in enumerate(bloque):
                     valor += ord(caracter) << (248-(8*i))
                 num = deshamminizacion_256(valor,arreglar_archivo)
-                num >>= 7 #Tenemos que sacar los 0's agregados
-                for i in range(31):
-                    shift = 248 - (8 * (i+1))
+                print(f'La palabra es {bin(num)} y tiene {num.bit_length()} bits')
+                for i in range(30):
+                    shift = 232 - (8 * (i))
                     letra = (num >> shift) & 0xFF
-                    print(f'La letra es: {bin(letra)}')
                     if(letra != 0):
                         wr.write(f"{chr(letra)}")
     except FileNotFoundError as e:
@@ -156,6 +160,8 @@ def decodificar_archivo_256(file_name_read, file_name_write, arreglar_archivo):
         print("Error: ", e)
 
 
+
+#Estamos leyendo mal el archivo
 
 
 '''----------------------------------------------------------------------------------------------------------------'''
