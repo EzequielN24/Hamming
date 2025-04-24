@@ -11,9 +11,9 @@ ejemplo.codificar_archivo_256('texto_plano.txt','texto_hammificado.txt')
 
 ejemplo.decodificar_archivo_256('texto_hammificado.txt','texto_decodificado.txt',1)
 
-#ejemplo.ingresar_error_256('texto_hammificado.txt','texto_error.txt')
+ejemplo.ingresar_error_256('texto_hammificado.txt','texto_error.txt')
 
-#ejemplo.decodificar_archivo_256('texto_error.txt','texto_decodificado_error.txt',1)
+ejemplo.decodificar_archivo_256('texto_error.txt','texto_decodificado_error.txt',1)
 
 fin = time.time()
 

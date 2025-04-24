@@ -1,5 +1,4 @@
 import random
-import math
 
 def crear_numero_256(p):
     # p contiene 240 bits de datos
@@ -47,7 +46,7 @@ def calcular_bit_paridad(p):
 
 def codificar_archivo_256(file_name_read, file_name_write):
     try:
-        with open(file_name_read, "rb") as f, open(file_name_write, "w",encoding="utf-8") as wr:
+        with open(file_name_read, "rb") as f, open(file_name_write, "wb") as wr:
             while True:
                 bloque = f.read(30)
                 if len(bloque) == 0:
@@ -55,10 +54,7 @@ def codificar_archivo_256(file_name_read, file_name_write):
                 valor = int.from_bytes(bloque, byteorder='big')
                 valor <<= (8 * (30 - len(bloque)))
                 num = crear_numero_256(valor)
-                print(f'La palabra codificada es {bin(num)}')
-                for i in range(1,33):
-                    letra=(num >> (256 - (8 * i))) & 255
-                    wr.write(f"{chr(letra)}")
+                wr.write(num.to_bytes(32,byteorder='big'))
     except FileNotFoundError as e:
         print("Ocurrió un error al abrir los archivos: ", e)
     except Exception as e:
@@ -67,13 +63,9 @@ def codificar_archivo_256(file_name_read, file_name_write):
 
 
 
-'''--------------------------------------------------------------------------------------------------'''
-
-
-
 def deshamminizacion_256(p,fix_module):
     decodificacion = control_hamming_256(p)
-    num = (decodificacion["s6"] << 6) + (decodificacion["s5"] << 5) + (decodificacion["s4"] << 4) + (decodificacion["s3"] << 3) +(decodificacion["s2"] << 2) + (decodificacion["s1"] << 1) + (decodificacion["s0"])
+    num = (decodificacion["s7"] << 7) + (decodificacion["s6"] << 6) + (decodificacion["s5"] << 5) + (decodificacion["s4"] << 4) + (decodificacion["s3"] << 3) +(decodificacion["s2"] << 2) + (decodificacion["s1"] << 1) + (decodificacion["s0"] )
     if decodificacion["paridad"] == 0:
         if num==0:
             return decodificacion_hamming_256(p)
@@ -83,7 +75,7 @@ def deshamminizacion_256(p,fix_module):
         if num==0:
             #Hay error en el bit de paridad
             if fix_module == 1:
-                p = corregir_error_256(p,256) 
+                p = corregir_error_256(p,255) 
                 return decodificacion_hamming_256(p)
             else:
                 return decodificacion_hamming_256(p)
@@ -96,14 +88,14 @@ def deshamminizacion_256(p,fix_module):
                 return decodificacion_hamming_256(p)
 
 
-def corregir_error_256(p,error):
-    return (p ^ (2**256 >> error)) 
 
+def corregir_error_256(p,error):
+    return (p ^ (2**256 >> (error))) 
 
 
 def control_hamming_256(p):
     res={}
-    for i,bit_pos in enumerate([1, 2, 4, 8, 16, 32, 128]):
+    for i,bit_pos in enumerate([1, 2, 4, 8, 16, 32, 64, 128]):
         control = calcular_bit_control_deshamminizacion(p, bit_pos)
         res[f"s{i}"]=control
     paridad=0
@@ -125,7 +117,7 @@ def calcular_bit_control_deshamminizacion(p:int, pos:int) -> int:
 def decodificacion_hamming_256(p):
     j = 0
     res = 0
-    print(bin(p))
+    #print(bin(p))
     for i in range(1, 257):
         if (i & (i - 1)) == 0:
             continue
@@ -139,53 +131,45 @@ def decodificacion_hamming_256(p):
 
 def decodificar_archivo_256(file_name_read, file_name_write, arreglar_archivo):
     try:
-        with open(file_name_read, "r", encoding="utf-8") as f, open(file_name_write, "w",encoding="utf-8") as wr:
+        with open(file_name_read, "rb") as f, open(file_name_write, "w",encoding="utf-8") as wr:
             while True:
                 bloque = f.read(32)
+                bloque_bytes = int.from_bytes(bloque,byteorder="big")
                 if len(bloque) == 0:
                     break
-                valor=0
-                for i,caracter in enumerate(bloque):
-                    valor += ord(caracter) << (248-(8*i))
-                num = deshamminizacion_256(valor,arreglar_archivo)
-                print(f'La palabra es {bin(num)} y tiene {num.bit_length()} bits')
+                num = deshamminizacion_256(bloque_bytes,arreglar_archivo)
                 for i in range(30):
                     shift = 232 - (8 * (i))
                     letra = (num >> shift) & 0xFF
                     if(letra != 0):
-                        wr.write(f"{chr(letra)}")
+                        if(chr(letra) == "\n"):
+                            pass
+                        else:
+                            wr.write(f"{chr(letra)}")
     except FileNotFoundError as e:
         print("Ocurrió un error al abrir los archivos: ", e)
     except Exception as e:
         print("Error: ", e)
 
 
-
 #Estamos leyendo mal el archivo
-
 
 '''----------------------------------------------------------------------------------------------------------------'''
 
 def ingresar_error_256(file_name_read,file_name_write):
     try:
-        with open(file_name_read, 'r', encoding="utf-8") as f, open(file_name_write, 'w',encoding="utf-8") as wr:
+        with open(file_name_read, 'rb') as f, open(file_name_write, 'wb') as wr:
             while True:
-                valor=0
-                contenido = f.read(32)
-                if(len(contenido)==0):
+                bloque = f.read(32)
+                bloque_bytes = int.from_bytes(bloque,byteorder='big')
+                if(len(bloque)==0):
                     break
                 if random.randint(0,1) == 1:
                     error = random.randint(0,255)
                     mask = 1 << error
-                    for i,caracter in enumerate(contenido):
-                        valor += ord(caracter) << (248-(8*i))
-                    valor^= mask
-                    for i in range(1,33):
-                        caracter=(valor >> (256-(8*i))) & 255
-                        caracter=chr(caracter)
-                        wr.write(f"{(caracter)}")
-                else:
-                    wr.write(f"{(contenido)}")
+                    bloque_bytes^= mask
+                wr.write(bloque_bytes.to_bytes(32,byteorder='big'))
         
     except Exception as e:
         print(f"Error al ingresar error: {e}")
+
