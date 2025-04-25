@@ -98,9 +98,7 @@ def codificar_archivo(file_name_read, file_name_write):
             contenido = f.read().decode('utf-8')
             with open(file_name_write, 'w',encoding='utf-8') as wr:
                 for i in range(0,len(contenido)):
-                    print(contenido[i])
                     hamming = hamminizacion(contenido[i])
-                    print(f"{hamming['primer']}{hamming['segundo']}")
                     wr.write(f"{hamming['primer']}{hamming['segundo']}")
     except FileNotFoundError as e:
         print("Ocurrió un error al abrir los archivos: ", e)
@@ -114,7 +112,10 @@ def decodificar_archivo(file_name_read, file_name_write, arreglar_archivo):
             contenido = f.read().decode()
             with open(file_name_write, 'w') as wr:
                 for i in range(0,len(contenido),2):
-                    wr.write(f"{chr(deshamminizacion(contenido[i],contenido[i+1],arreglar_archivo))}")
+                    if(chr(deshamminizacion(contenido[i],contenido[i+1],arreglar_archivo)) == "\n"):
+                        pass
+                    else:
+                        wr.write(f"{chr(deshamminizacion(contenido[i],contenido[i+1],arreglar_archivo))}")
     except FileNotFoundError as e:
         print("Ocurrió un error al abrir los archivos: ", e)
     except Exception as e:
